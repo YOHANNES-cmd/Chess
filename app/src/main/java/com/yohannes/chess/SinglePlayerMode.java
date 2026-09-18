@@ -1,23 +1,23 @@
-package com.example.dipanshkhandelwal.chess;
+package com.yohannes.chess;
 
 import android.os.Build;
-import android.support.v7.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.example.dipanshkhandelwal.chess.Pieces.Bishop;
-import com.example.dipanshkhandelwal.chess.Pieces.King;
-import com.example.dipanshkhandelwal.chess.Pieces.Knight;
-import com.example.dipanshkhandelwal.chess.Pieces.Pawn;
-import com.example.dipanshkhandelwal.chess.Pieces.Piece;
-import com.example.dipanshkhandelwal.chess.Pieces.Queen;
-import com.example.dipanshkhandelwal.chess.Pieces.Rook;
+import com.yohannes.chess.Pieces.Bishop;
+import com.yohannes.chess.Pieces.King;
+import com.yohannes.chess.Pieces.Knight;
+import com.yohannes.chess.Pieces.Pawn;
+import com.yohannes.chess.Pieces.Piece;
+import com.yohannes.chess.Pieces.Queen;
+import com.yohannes.chess.Pieces.Rook;
 
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+public class SinglePlayerMode extends AppCompatActivity implements View.OnClickListener {
 
     public Boolean FirstPlayerTurn;
     public ArrayList<Coordinates> listOfCoordinates = new ArrayList<>();
@@ -405,270 +405,201 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View v) {
 
-        switch (v.getId()) {
-            case R.id.R00:
-                clickedPosition = new Coordinates(0, 0);
-                break;
-            case R.id.R10:
-                clickedPosition.setX(1);
-                clickedPosition.setY(0);
-                break;
-            case R.id.R20:
-                clickedPosition.setX(2);
-                clickedPosition.setY(0);
-                break;
-            case R.id.R30:
-                clickedPosition.setX(3);
-                clickedPosition.setY(0);
-                break;
-            case R.id.R40:
-                clickedPosition.setX(4);
-                clickedPosition.setY(0);
-                break;
-            case R.id.R50:
-                clickedPosition.setX(5);
-                clickedPosition.setY(0);
-                break;
-            case R.id.R60:
-                clickedPosition.setX(6);
-                clickedPosition.setY(0);
-                break;
-            case R.id.R70:
-                clickedPosition.setX(7);
-                clickedPosition.setY(0);
-                break;
+        int id = v.getId();
 
-            case R.id.R01:
-                clickedPosition.setX(0);
-                clickedPosition.setY(1);
-                break;
-            case R.id.R11:
-                clickedPosition.setX(1);
-                clickedPosition.setY(1);
-                break;
-            case R.id.R21:
-                clickedPosition.setX(2);
-                clickedPosition.setY(1);
-                break;
-            case R.id.R31:
-                clickedPosition.setX(3);
-                clickedPosition.setY(1);
-                break;
-            case R.id.R41:
-                clickedPosition.setX(4);
-                clickedPosition.setY(1);
-                break;
-            case R.id.R51:
-                clickedPosition.setX(5);
-                clickedPosition.setY(1);
-                break;
-            case R.id.R61:
-                clickedPosition.setX(6);
-                clickedPosition.setY(1);
-                break;
-            case R.id.R71:
-                clickedPosition.setX(7);
-                clickedPosition.setY(1);
-                break;
-
-            case R.id.R02:
-                clickedPosition.setX(0);
-                clickedPosition.setY(2);
-                break;
-            case R.id.R12:
-                clickedPosition.setX(1);
-                clickedPosition.setY(2);
-                break;
-            case R.id.R22:
-                clickedPosition.setX(2);
-                clickedPosition.setY(2);
-                break;
-            case R.id.R32:
-                clickedPosition.setX(3);
-                clickedPosition.setY(2);
-                break;
-            case R.id.R42:
-                clickedPosition.setX(4);
-                clickedPosition.setY(2);
-                break;
-            case R.id.R52:
-                clickedPosition.setX(5);
-                clickedPosition.setY(2);
-                break;
-            case R.id.R62:
-                clickedPosition.setX(6);
-                clickedPosition.setY(2);
-                break;
-            case R.id.R72:
-                clickedPosition.setX(7);
-                clickedPosition.setY(2);
-                break;
-
-            case R.id.R03:
-                clickedPosition.setX(0);
-                clickedPosition.setY(3);
-                break;
-            case R.id.R13:
-                clickedPosition.setX(1);
-                clickedPosition.setY(3);
-                break;
-            case R.id.R23:
-                clickedPosition.setX(2);
-                clickedPosition.setY(3);
-                break;
-            case R.id.R33:
-                clickedPosition.setX(3);
-                clickedPosition.setY(3);
-                break;
-            case R.id.R43:
-                clickedPosition.setX(4);
-                clickedPosition.setY(3);
-                break;
-            case R.id.R53:
-                clickedPosition.setX(5);
-                clickedPosition.setY(3);
-                break;
-            case R.id.R63:
-                clickedPosition.setX(6);
-                clickedPosition.setY(3);
-                break;
-            case R.id.R73:
-                clickedPosition.setX(7);
-                clickedPosition.setY(3);
-                break;
-
-            case R.id.R04:
-                clickedPosition.setX(0);
-                clickedPosition.setY(4);
-                break;
-            case R.id.R14:
-                clickedPosition.setX(1);
-                clickedPosition.setY(4);
-                break;
-            case R.id.R24:
-                clickedPosition.setX(2);
-                clickedPosition.setY(4);
-                break;
-            case R.id.R34:
-                clickedPosition.setX(3);
-                clickedPosition.setY(4);
-                break;
-            case R.id.R44:
-                clickedPosition.setX(4);
-                clickedPosition.setY(4);
-                break;
-            case R.id.R54:
-                clickedPosition.setX(5);
-                clickedPosition.setY(4);
-                break;
-            case R.id.R64:
-                clickedPosition.setX(6);
-                clickedPosition.setY(4);
-                break;
-            case R.id.R74:
-                clickedPosition.setX(7);
-                clickedPosition.setY(4);
-                break;
-
-            case R.id.R05:
-                clickedPosition.setX(0);
-                clickedPosition.setY(5);
-                break;
-            case R.id.R15:
-                clickedPosition.setX(1);
-                clickedPosition.setY(5);
-                break;
-            case R.id.R25:
-                clickedPosition.setX(2);
-                clickedPosition.setY(5);
-                break;
-            case R.id.R35:
-                clickedPosition.setX(3);
-                clickedPosition.setY(5);
-                break;
-            case R.id.R45:
-                clickedPosition.setX(4);
-                clickedPosition.setY(5);
-                break;
-            case R.id.R55:
-                clickedPosition.setX(5);
-                clickedPosition.setY(5);
-                break;
-            case R.id.R65:
-                clickedPosition.setX(6);
-                clickedPosition.setY(5);
-                break;
-            case R.id.R75:
-                clickedPosition.setX(7);
-                clickedPosition.setY(5);
-                break;
-
-            case R.id.R06:
-                clickedPosition.setX(0);
-                clickedPosition.setY(6);
-                break;
-            case R.id.R16:
-                clickedPosition.setX(1);
-                clickedPosition.setY(6);
-                break;
-            case R.id.R26:
-                clickedPosition.setX(2);
-                clickedPosition.setY(6);
-                break;
-            case R.id.R36:
-                clickedPosition.setX(3);
-                clickedPosition.setY(6);
-                break;
-            case R.id.R46:
-                clickedPosition.setX(4);
-                clickedPosition.setY(6);
-                break;
-            case R.id.R56:
-                clickedPosition.setX(5);
-                clickedPosition.setY(6);
-                break;
-            case R.id.R66:
-                clickedPosition.setX(6);
-                clickedPosition.setY(6);
-                break;
-            case R.id.R76:
-                clickedPosition.setX(7);
-                clickedPosition.setY(6);
-                break;
-
-            case R.id.R07:
-                clickedPosition.setX(0);
-                clickedPosition.setY(7);
-                break;
-            case R.id.R17:
-                clickedPosition.setX(1);
-                clickedPosition.setY(7);
-                break;
-            case R.id.R27:
-                clickedPosition.setX(2);
-                clickedPosition.setY(7);
-                break;
-            case R.id.R37:
-                clickedPosition.setX(3);
-                clickedPosition.setY(7);
-                break;
-            case R.id.R47:
-                clickedPosition.setX(4);
-                clickedPosition.setY(7);
-                break;
-            case R.id.R57:
-                clickedPosition.setX(5);
-                clickedPosition.setY(7);
-                break;
-            case R.id.R67:
-                clickedPosition.setX(6);
-                clickedPosition.setY(7);
-                break;
-            case R.id.R77:
-                clickedPosition.setX(7);
-                clickedPosition.setY(7);
-                break;
+        if (id == R.id.R00) {
+            clickedPosition = new Coordinates(0, 0);
+        } else if (id == R.id.R10) {
+            clickedPosition.setX(1);
+            clickedPosition.setY(0);
+        } else if (id == R.id.R20) {
+            clickedPosition.setX(2);
+            clickedPosition.setY(0);
+        } else if (id == R.id.R30) {
+            clickedPosition.setX(3);
+            clickedPosition.setY(0);
+        } else if (id == R.id.R40) {
+            clickedPosition.setX(4);
+            clickedPosition.setY(0);
+        } else if (id == R.id.R50) {
+            clickedPosition.setX(5);
+            clickedPosition.setY(0);
+        } else if (id == R.id.R60) {
+            clickedPosition.setX(6);
+            clickedPosition.setY(0);
+        } else if (id == R.id.R70) {
+            clickedPosition.setX(7);
+            clickedPosition.setY(0);
+        } else if (id == R.id.R01) {
+            clickedPosition.setX(0);
+            clickedPosition.setY(1);
+        } else if (id == R.id.R11) {
+            clickedPosition.setX(1);
+            clickedPosition.setY(1);
+        } else if (id == R.id.R21) {
+            clickedPosition.setX(2);
+            clickedPosition.setY(1);
+        } else if (id == R.id.R31) {
+            clickedPosition.setX(3);
+            clickedPosition.setY(1);
+        } else if (id == R.id.R41) {
+            clickedPosition.setX(4);
+            clickedPosition.setY(1);
+        } else if (id == R.id.R51) {
+            clickedPosition.setX(5);
+            clickedPosition.setY(1);
+        } else if (id == R.id.R61) {
+            clickedPosition.setX(6);
+            clickedPosition.setY(1);
+        } else if (id == R.id.R71) {
+            clickedPosition.setX(7);
+            clickedPosition.setY(1);
+        } else if (id == R.id.R02) {
+            clickedPosition.setX(0);
+            clickedPosition.setY(2);
+        } else if (id == R.id.R12) {
+            clickedPosition.setX(1);
+            clickedPosition.setY(2);
+        } else if (id == R.id.R22) {
+            clickedPosition.setX(2);
+            clickedPosition.setY(2);
+        } else if (id == R.id.R32) {
+            clickedPosition.setX(3);
+            clickedPosition.setY(2);
+        } else if (id == R.id.R42) {
+            clickedPosition.setX(4);
+            clickedPosition.setY(2);
+        } else if (id == R.id.R52) {
+            clickedPosition.setX(5);
+            clickedPosition.setY(2);
+        } else if (id == R.id.R62) {
+            clickedPosition.setX(6);
+            clickedPosition.setY(2);
+        } else if (id == R.id.R72) {
+            clickedPosition.setX(7);
+            clickedPosition.setY(2);
+        } else if (id == R.id.R03) {
+            clickedPosition.setX(0);
+            clickedPosition.setY(3);
+        } else if (id == R.id.R13) {
+            clickedPosition.setX(1);
+            clickedPosition.setY(3);
+        } else if (id == R.id.R23) {
+            clickedPosition.setX(2);
+            clickedPosition.setY(3);
+        } else if (id == R.id.R33) {
+            clickedPosition.setX(3);
+            clickedPosition.setY(3);
+        } else if (id == R.id.R43) {
+            clickedPosition.setX(4);
+            clickedPosition.setY(3);
+        } else if (id == R.id.R53) {
+            clickedPosition.setX(5);
+            clickedPosition.setY(3);
+        } else if (id == R.id.R63) {
+            clickedPosition.setX(6);
+            clickedPosition.setY(3);
+        } else if (id == R.id.R73) {
+            clickedPosition.setX(7);
+            clickedPosition.setY(3);
+        } else if (id == R.id.R04) {
+            clickedPosition.setX(0);
+            clickedPosition.setY(4);
+        } else if (id == R.id.R14) {
+            clickedPosition.setX(1);
+            clickedPosition.setY(4);
+        } else if (id == R.id.R24) {
+            clickedPosition.setX(2);
+            clickedPosition.setY(4);
+        } else if (id == R.id.R34) {
+            clickedPosition.setX(3);
+            clickedPosition.setY(4);
+        } else if (id == R.id.R44) {
+            clickedPosition.setX(4);
+            clickedPosition.setY(4);
+        } else if (id == R.id.R54) {
+            clickedPosition.setX(5);
+            clickedPosition.setY(4);
+        } else if (id == R.id.R64) {
+            clickedPosition.setX(6);
+            clickedPosition.setY(4);
+        } else if (id == R.id.R74) {
+            clickedPosition.setX(7);
+            clickedPosition.setY(4);
+        } else if (id == R.id.R05) {
+            clickedPosition.setX(0);
+            clickedPosition.setY(5);
+        } else if (id == R.id.R15) {
+            clickedPosition.setX(1);
+            clickedPosition.setY(5);
+        } else if (id == R.id.R25) {
+            clickedPosition.setX(2);
+            clickedPosition.setY(5);
+        } else if (id == R.id.R35) {
+            clickedPosition.setX(3);
+            clickedPosition.setY(5);
+        } else if (id == R.id.R45) {
+            clickedPosition.setX(4);
+            clickedPosition.setY(5);
+        } else if (id == R.id.R55) {
+            clickedPosition.setX(5);
+            clickedPosition.setY(5);
+        } else if (id == R.id.R65) {
+            clickedPosition.setX(6);
+            clickedPosition.setY(5);
+        } else if (id == R.id.R75) {
+            clickedPosition.setX(7);
+            clickedPosition.setY(5);
+        } else if (id == R.id.R06) {
+            clickedPosition.setX(0);
+            clickedPosition.setY(6);
+        } else if (id == R.id.R16) {
+            clickedPosition.setX(1);
+            clickedPosition.setY(6);
+        } else if (id == R.id.R26) {
+            clickedPosition.setX(2);
+            clickedPosition.setY(6);
+        } else if (id == R.id.R36) {
+            clickedPosition.setX(3);
+            clickedPosition.setY(6);
+        } else if (id == R.id.R46) {
+            clickedPosition.setX(4);
+            clickedPosition.setY(6);
+        } else if (id == R.id.R56) {
+            clickedPosition.setX(5);
+            clickedPosition.setY(6);
+        } else if (id == R.id.R66) {
+            clickedPosition.setX(6);
+            clickedPosition.setY(6);
+        } else if (id == R.id.R76) {
+            clickedPosition.setX(7);
+            clickedPosition.setY(6);
+        } else if (id == R.id.R07) {
+            clickedPosition.setX(0);
+            clickedPosition.setY(7);
+        } else if (id == R.id.R17) {
+            clickedPosition.setX(1);
+            clickedPosition.setY(7);
+        } else if (id == R.id.R27) {
+            clickedPosition.setX(2);
+            clickedPosition.setY(7);
+        } else if (id == R.id.R37) {
+            clickedPosition.setX(3);
+            clickedPosition.setY(7);
+        } else if (id == R.id.R47) {
+            clickedPosition.setX(4);
+            clickedPosition.setY(7);
+        } else if (id == R.id.R57) {
+            clickedPosition.setX(5);
+            clickedPosition.setY(7);
+        } else if (id == R.id.R67) {
+            clickedPosition.setX(6);
+            clickedPosition.setY(7);
+        } else if (id == R.id.R77) {
+            clickedPosition.setX(7);
+            clickedPosition.setY(7);
         }
+
 
         if (!AnythingSelected) {
             if(Board[clickedPosition.getX()][clickedPosition.getY()].getPiece() == null) {
@@ -823,45 +754,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public void pawnChoice(View v){
         int x = v.getId();
-        switch (x){
-            case R.id.pawn_queen :
-                if(clickedPosition.getY() == 0){
-                    Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Queen(true));
-                    DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.wqueen);
-                }else{
-                    Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Queen(false));
-                    DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.bqueen);
-                }
-                break;
-            case R.id.pawn_rook :
-                if(clickedPosition.getY() == 0){
-                    Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Rook(true));
-                    DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.wrook);
-                }else{
-                    Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Rook(false));
-                    DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.brook);
-                }
-                break;
-            case R.id.pawn_bishop :
-                if(clickedPosition.getY() == 0){
-                    Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Bishop(true));
-                    DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.wbishop);
-                }else{
-                    Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Bishop(false));
-                    DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.bbishop);
-                }
-                break;
-            case R.id.pawn_knight :
-                if(clickedPosition.getY() == 0){
-                    Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Knight(true));
-                    DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.wknight);
-                }else{
-                    Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Knight(false));
-                    DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.bknight);
 
-                }
-                break;
+        if (x == R.id.pawn_queen) {
+            if(clickedPosition.getY() == 0){
+                Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Queen(true));
+                DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.wqueen);
+            }else{
+                Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Queen(false));
+                DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.bqueen);
+            }
+        } else if (x == R.id.pawn_rook) {
+            if(clickedPosition.getY() == 0){
+                Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Rook(true));
+                DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.wrook);
+            }else{
+                Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Rook(false));
+                DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.brook);
+            }
+        } else if (x == R.id.pawn_bishop) {
+            if(clickedPosition.getY() == 0){
+                Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Bishop(true));
+                DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.wbishop);
+            }else{
+                Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Bishop(false));
+                DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.bbishop);
+            }
+        } else if (x == R.id.pawn_knight) {
+            if(clickedPosition.getY() == 0){
+                Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Knight(true));
+                DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.wknight);
+            }else{
+                Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(new Knight(false));
+                DisplayBoard[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.drawable.bknight);
+            }
         }
+
         pawn_choices.setVisibility(View.INVISIBLE);
     }
 
@@ -949,4 +876,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         isKingInDanger();
     }
+
 }
