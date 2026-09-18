@@ -1,4 +1,4 @@
-package com.example.dipanshkhandelwal.chess;
+package com.yohannes.chess;
 
 /**
  * Created by DIPANSH KHANDELWAL on 03-06-2017

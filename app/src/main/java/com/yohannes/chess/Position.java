@@ -1,9 +1,10 @@
-package com.example.dipanshkhandelwal.chess;
+package com.yohannes.chess;
 
-import com.example.dipanshkhandelwal.chess.Pieces.Piece;
+import com.yohannes.chess.Pieces.Piece;
 
 /**
- * Created by DIPANSH KHANDELWAL on 03-06-2017
+ *
+ * updated by JOHANNES KANKO ON 17/09/2026
  */
 
 public class Position {

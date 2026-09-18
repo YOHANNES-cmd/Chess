@@ -1,14 +1,15 @@
-package com.example.dipanshkhandelwal.chess;
+package com.yohannes.chess;
 
 import android.content.Intent;
 import android.os.Build;
 import android.os.Handler;
-import android.support.v7.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+
 
 public class FirstPage extends AppCompatActivity {
 
@@ -16,7 +17,7 @@ public class FirstPage extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // Making notification bar transparent
-        if (Build.VERSION.SDK_INT >= 21) {
+        if (Build.VERSION.SDK_INT >= 25) {
             getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
         }
         setContentView(R.layout.activity_first_page);
@@ -35,12 +36,22 @@ public class FirstPage extends AppCompatActivity {
             }
         },5000);
 
-        Button StartGame = (Button) findViewById(R.id.button);
+        Button StarttwoplayerGame = (Button) findViewById(R.id.twoPlayersButton);
 
-        StartGame.setOnClickListener(new View.OnClickListener() {
+        StarttwoplayerGame.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent i = new Intent(FirstPage.this , MainActivity.class);
+                FirstPage.this.startActivity(i);
+            }
+        });
+
+        Button StartSinglePlayerGame = (Button) findViewById(R.id.singlePlayerButton);
+
+        StartSinglePlayerGame.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(FirstPage.this , SinglePlayerMode.class);
                 FirstPage.this.startActivity(i);
             }
         });
