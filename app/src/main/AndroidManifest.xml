@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.yohannes.chess">
-
+    <!-- Add these two lines if they are missing -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <application
         android:allowBackup="true"
         android:icon="@drawable/gameicon"
@@ -10,7 +12,14 @@
         android:theme="@style/AppTheme"
         android:configChanges="orientation|keyboardHidden">
         <activity android:name="com.yohannes.chess.MainActivity">
+
         </activity>
+        <activity android:name="com.yohannes.chess.SinglePlayerModeActivity">
+        </activity>
+        <activity
+            android:name=".SinglePlayerModewithBotActivity"
+            android:screenOrientation="portrait"
+            android:exported="false" />
 
         <activity android:name="com.yohannes.chess.FirstPage"
             android:exported="true">

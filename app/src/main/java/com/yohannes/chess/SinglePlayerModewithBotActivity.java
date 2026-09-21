@@ -1,11 +1,12 @@
 package com.yohannes.chess;
 
 import android.os.Build;
-import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.yohannes.chess.Pieces.Bishop;
 import com.yohannes.chess.Pieces.King;
@@ -15,30 +16,42 @@ import com.yohannes.chess.Pieces.Piece;
 import com.yohannes.chess.Pieces.Queen;
 import com.yohannes.chess.Pieces.Rook;
 
+import org.json.JSONObject;
 
-
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+public class SinglePlayerModewithBotActivity  extends AppCompatActivity implements View.OnClickListener {
 
-    public Boolean FirstPlayerTurn;
+    public TextView aiThinkingOverlay;
+    // Core state flags
+    private int activeDifficultyLevel = 0; // Default to Beginner
+
+    public Boolean FirstPlayerTurn; // True = White (Human), False = Black (AI)
+    public Boolean isAiThinking = false; // Intercepts clicks during computer processing
+
+    // Board structural systems
     public ArrayList<Coordinates> listOfCoordinates = new ArrayList<>();
     public Position[][] Board = new Position[8][8];
     public Position[][] Board2 = new Position[8][8];
-    // Track the absolute last move coordinates for both human players
-    private Coordinates lastMovedFromSquare = null;
-    private Coordinates lastMovedToSquare = null;
-
     public Boolean AnythingSelected = false;
-    public Coordinates lastPos = null ;
+    public Coordinates lastPos = null;
     public Coordinates clickedPosition = new Coordinates(0, 0);
+
+    // XML Layout Bindings
     public TextView game_over;
     public TextView[][] DisplayBoard = new TextView[8][8];
     public TextView[][] DisplayBoardBackground = new TextView[8][8];
     public ArrayList<Position[][]> LastMoves = new ArrayList<>();
     public LinearLayout pawn_choices;
     public int numberOfMoves;
-
+    // Track the AI's last move coordinates for the smart indicator highlights
+    private Coordinates aiLastFromSquare = null;
+    private Coordinates aiLastToSquare = null;
     Piece bKing;
     Piece wKing;
 
@@ -81,20 +94,307 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Making notification bar transparent
         if (Build.VERSION.SDK_INT >= 21) {
-            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            );
         }
         setContentView(R.layout.activity_main);
+// Add this inside your onCreate method right below your other findViewById calls
+        aiThinkingOverlay = (TextView) findViewById(R.id.ai_thinking_overlay);
 
         initializeBoard();
 
-        game_over = (TextView)findViewById(R.id.game_over);
-        pawn_choices = (LinearLayout)findViewById(R.id.pawn_chioces);
+        game_over = (TextView) findViewById(R.id.game_over);
+        pawn_choices = (LinearLayout) findViewById(R.id.pawn_chioces);
 
         game_over.setVisibility(View.INVISIBLE);
         pawn_choices.setVisibility(View.INVISIBLE);
+
+        setupClickListeners();
     }
+
+    private void setupClickListeners() {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                DisplayBoard[i][j].setOnClickListener(this);
+            }
+        }
+    }
+
+
+    @Override
+    public void onClick(View v) {
+        // Protect turn sequence from rapid tapping while the Bot calculates a move
+        if (isAiThinking || !FirstPlayerTurn) {
+            return;
+        }
+
+        int id = v.getId();
+        updateClickedPositionCoordinates(id);
+
+        if (!AnythingSelected) {
+            Piece selectedPiece = Board[clickedPosition.getX()][clickedPosition.getY()].getPiece();
+
+            if (selectedPiece == null) {
+                isKingInDanger();
+                return;
+            } else {
+                // Verify the piece belongs to the player whose turn it currently is
+                if (selectedPiece.isWhite() != FirstPlayerTurn) {
+                    isKingInDanger();
+                    return;
+                } else {
+                    // 1. Clear any old lingering coordinate path selections
+                    listOfCoordinates.clear();
+
+                    // 2. Calculate the raw geometric allowed moves for this piece
+                    ArrayList<Coordinates> rawMoves = selectedPiece.AllowedMoves(clickedPosition, Board);
+
+                    // 3. 🌟 STRICT FILTER: Only keep moves that do NOT leave or put your King in check
+                    for (Coordinates targetTile : rawMoves) {
+                        if (isMoveSafeFromCheck(clickedPosition, targetTile, selectedPiece.isWhite())) {
+                            listOfCoordinates.add(targetTile);
+                        }
+                    }
+
+                    // 4. If the piece has no legal options (e.g. it is absolute pinned), block selection
+                    if (listOfCoordinates.isEmpty()) {
+                        isKingInDanger();
+                        return;
+                    }
+
+                    // 5. Mark the state as "Selected" safely
+                    AnythingSelected = true;
+                    lastPos = new Coordinates(clickedPosition.getX(), clickedPosition.getY());
+
+                    // 6. Force redraw layout: setBoard handles painting the legal filtered highlights
+                    setBoard();
+                }
+            }
+        } else {
+            // A piece was already selected; the user is now tapping a landing destination square
+            processMoveSelection();
+        }
+    }
+
+
+
+    private void updateClickedPositionCoordinates(int id) {
+        // Automatically maps layout View IDs back into structured X and Y integer grid limits
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                String resName = "R" + i + j;
+                int checkId = getResources().getIdentifier(resName, "id", getPackageName());
+                if (id == checkId) {
+                    clickedPosition.setX(i);
+                    clickedPosition.setY(j);
+                    return;
+                }
+            }
+        }
+    }
+    private void processMoveSelection() {
+        Piece targetedPiece = Board[clickedPosition.getX()][clickedPosition.getY()].getPiece();
+
+        if (targetedPiece == null || targetedPiece.isWhite() != FirstPlayerTurn) {
+            // Tapping an empty square or an enemy piece -> try to execute the move
+            if (moveIsAllowed(listOfCoordinates, clickedPosition)) {
+                executeMoveOnBoard();
+            } else {
+                cancelCurrentSelection();
+                setBoard();
+            }
+        } else {
+            // 🌟 Switch focus: The user tapped another allied piece instead of moving!
+            cancelCurrentSelection();
+
+            // Recalculate legal move vectors for the newly selected piece instantly
+            listOfCoordinates = Board[clickedPosition.getX()][clickedPosition.getY()].getPiece().AllowedMoves(clickedPosition, Board);
+            AnythingSelected = true;
+            lastPos = new Coordinates(clickedPosition.getX(), clickedPosition.getY());
+
+            setBoard(); // Updates layout and draws highlights for the new piece
+        }
+    }
+    private void executeMoveOnBoard() {
+        saveBoard();
+
+        // Wipe highlights from previous selection coordinates before changing array positions
+        resetColorAtAllowedPosition(listOfCoordinates);
+        resetColorAtLastPosition(lastPos);
+
+        Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(Board[lastPos.getX()][lastPos.getY()].getPiece());
+        Board[lastPos.getX()][lastPos.getY()].setPiece(null);
+
+        DisplayBoard[lastPos.getX()][lastPos.getY()].setBackgroundResource(0);
+
+        AnythingSelected = false;
+        FirstPlayerTurn = !FirstPlayerTurn; // Switches turn focus down to computer bot engine
+        checkForPawn();
+        setBoard(); // Redraws fresh state layout parameters completely clean
+
+        // Check if it's now the AI's turn
+        if (!FirstPlayerTurn) {
+            triggerAiEngineSequence();
+        }
+    }
+
+
+    private void cancelCurrentSelection() {
+        resetColorAtLastPosition(lastPos);
+        resetColorAtAllowedPosition(listOfCoordinates);
+        AnythingSelected = false;
+        listOfCoordinates.clear(); // Empty active path maps safely
+    }
+
+
+    private final ChessBotEngine localBotEngine = new ChessBotEngine();
+    private final IntermediateBotEngine intermediateBot = new IntermediateBotEngine();
+    private final ProductionBotEngine productionBot = new ProductionBotEngine();
+
+    private void triggerAiEngineSequence() {
+        isAiThinking = true;
+
+        // Bring up the processing text overlay container block instantly
+        aiThinkingOverlay.setVisibility(View.VISIBLE);
+
+        // postDelayed simulates human thinking latency processing time frame delays locally
+        aiThinkingOverlay.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                ChessBotEngine.MoveCandidate computedMove = null;
+
+                // 🌟 DYNAMIC DIFFICULTY ROUTING ENGINE SELECTION LAYER
+                if (activeDifficultyLevel == 0) {
+                    // Level 0: Casual Woodcutter Bot (Greedy/Random selection)
+                    computedMove = localBotEngine.calculateCounterMove(Board);
+                } else if (activeDifficultyLevel == 1) {
+                    // Level 1: Master Tactician Bot (Minimax Depth 2 with Position Maps)
+                    computedMove = intermediateBot.calculateMove(Board);
+                } else if (activeDifficultyLevel == 2) {
+                    // Level 2: Grandmaster Core Bot (Alpha-Beta Depth 3 with Ordered Priority)
+                    computedMove = productionBot.calculateMove(Board);
+                }
+
+                // If a valid legal counter-move was calculated, execute it on screen
+                if (computedMove != null) {
+                    aiThinkingOverlay.setVisibility(View.INVISIBLE);
+
+                    // Transform coordinate points cleanly back into UCI long algebraic notation strings
+                    char fromCol = (char) ('a' + computedMove.from.getX());
+                    int fromRow = 8 - computedMove.from.getY();
+                    char toCol = (char) ('a' + computedMove.to.getX());
+                    int toRow = 8 - computedMove.to.getY();
+
+                    String moveToken = "" + fromCol + fromRow + toCol + toRow;
+
+                    // Fire layout updates and switch turn permissions back to White human user
+                    executeAiMoveOnBoard(moveToken);
+                } else {
+                    // Fallback path if the engine evaluates zero valid choices (Checkmate / Stalemate)
+                    isAiThinking = false;
+                    FirstPlayerTurn = true;
+                    aiThinkingOverlay.setVisibility(View.INVISIBLE);
+                }
+            }
+        }, 400); // 400 milliseconds compute buffer time slot delay
+    }
+
+
+
+    private void resetAiStateOnFailure() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                isAiThinking = false;
+                FirstPlayerTurn = true;
+                aiThinkingOverlay.setVisibility(View.INVISIBLE); // Hide overlay on network drop
+            }
+        });
+    }
+
+
+    private void executeAiMoveOnBoard(String move) {
+        // Translates standard UCI string notation tokens (e.g. "e2e4") back to array indexes
+        int fromX = move.charAt(0) - 'a';
+        int fromY = '8' - move.charAt(1);
+        int toX = move.charAt(2) - 'a';
+        int toY = '8' - move.charAt(3);
+
+        // Store the exact path boundaries to render visual highlight borders later
+        aiLastFromSquare = new Coordinates(fromX, fromY);
+        aiLastToSquare = new Coordinates(toX, toY);
+
+        lastPos = new Coordinates(fromX, fromY);
+        clickedPosition = new Coordinates(toX, toY);
+
+        saveBoard();
+        Board[toX][toY].setPiece(Board[fromX][fromY].getPiece());
+        Board[fromX][fromY].setPiece(null);
+
+        DisplayBoard[fromX][fromY].setBackgroundResource(0);
+        isKingInDanger();
+        FirstPlayerTurn = true; // Return control back to human user
+        isAiThinking = false;
+        checkForPawn();
+        setBoard(); // This updates piece graphics and also redraws color backgrounds
+    }
+
+
+    private String generateCurrentFenString() {
+        StringBuilder fen = new StringBuilder();
+
+        // 1. Piece Placement: Loop through vertical rows (j) from index 0 down to 7
+        for (int j = 0; j < 8; j++) {
+            int emptySquares = 0;
+
+            for (int i = 0; i < 8; i++) {
+                Piece p = Board[i][j].getPiece();
+
+                if (p == null) {
+                    emptySquares++;
+                } else {
+                    // If there were empty squares before this piece, append the number
+                    if (emptySquares > 0) {
+                        fen.append(emptySquares);
+                        emptySquares = 0;
+                    }
+
+                    // Convert your piece classes to standard FEN characters
+                    char pChar = 'p';
+                    if (p instanceof King) pChar = 'k';
+                    else if (p instanceof Queen) pChar = 'q';
+                    else if (p instanceof Rook) pChar = 'r';
+                    else if (p instanceof Bishop) pChar = 'b';
+                    else if (p instanceof Knight) pChar = 'n';
+
+                    // Uppercase = White pieces, Lowercase = Black pieces
+                    fen.append(p.isWhite() ? Character.toUpperCase(pChar) : pChar);
+                }
+            }
+
+            // If the row ends with empty squares, append the remaining count
+            if (emptySquares > 0) {
+                fen.append(emptySquares);
+            }
+
+            // Add a row separator slash (but do not add one after the last row)
+            if (j < 7) {
+                fen.append("/");
+            }
+        }
+
+        // 2. Active Side Turn Flag: 'w' for White, 'b' for Black
+        // Since this runs immediately after White moves, FirstPlayerTurn is false, marking it as Black's turn ('b').
+        fen.append(FirstPlayerTurn ? " w " : " b ");
+
+        // 3. Status Placeholders: Castling Rights, En Passant Targets, Halfmove Clock, Fullmove Number
+        fen.append("KQkq - 0 1");
+
+        return fen.toString();
+    }
+
     private boolean hasAnyLegalMoves(boolean checkWhite) {
         // Scan the entire board square by square
         for (int i = 0; i < 8; i++) {
@@ -194,7 +494,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         boolean isCurrentlyInCheck = isKingCurrentlyInCheck(sideToMove);
 
         if (!hasMoves) {
-           // isAiThinking = true; // Lock all touch capabilities on the grid layout
+            isAiThinking = true; // Lock all touch capabilities on the grid layout
             game_over.setVisibility(View.VISIBLE);
 
             String dialogTitle;
@@ -254,6 +554,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
     }
+
+
 
     private void initializeBoard() {
         bKing = new King(false);
@@ -491,10 +793,59 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void setBoard() {
-
+        // 1. Reset background tile colors, protecting active paths and selections
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
 
+                // If a piece highlight is active and this tile is in the allowed list, skip resetting it
+                if (AnythingSelected && isTileInAllowedMoves(i, j)) {
+                    continue;
+                }
+
+                // Protect the highlight background of the selected piece itself
+                if (AnythingSelected && lastPos != null && lastPos.getX() == i && lastPos.getY() == j) {
+                    continue;
+                }
+
+                // Otherwise, draw standard checkered pattern background squares
+                if ((i + j) % 2 == 0) {
+                    DisplayBoardBackground[i][j].setBackgroundResource(R.color.colorBoardDark);
+                } else {
+                    DisplayBoardBackground[i][j].setBackgroundResource(R.color.colorBoardLight);
+                }
+            }
+        }
+
+        // 2. NOW APPLY THE HIGHLIGHT COLORS DYNAMICALLY
+        if (AnythingSelected && lastPos != null) {
+            // Highlight the selected piece square
+            DisplayBoardBackground[lastPos.getX()][lastPos.getY()].setBackgroundResource(R.color.colorSelected);
+
+            // Loop through allowed paths and highlight available slots
+            for (Coordinates coord : listOfCoordinates) {
+                if (Board[coord.getX()][coord.getY()].getPiece() == null) {
+                    // Empty square = normal move option
+                    DisplayBoardBackground[coord.getX()][coord.getY()].setBackgroundResource(R.color.colorPositionAvailable);
+                } else {
+                    // Occupied by enemy = attack/danger option
+                    DisplayBoardBackground[coord.getX()][coord.getY()].setBackgroundResource(R.color.colorDanger);
+                }
+            }
+        }
+
+        // 3. Inject Smart Engine Move Indicator Colors if the AI just completed a turn
+        if (aiLastFromSquare != null && aiLastToSquare != null && !AnythingSelected) {
+            DisplayBoardBackground[aiLastFromSquare.getX()][aiLastFromSquare.getY()].setBackgroundResource(R.color.colorSelected);
+            DisplayBoardBackground[aiLastToSquare.getX()][aiLastToSquare.getY()].setBackgroundResource(R.color.colorSelected);
+        }
+
+
+        // [Keep your standard switch-case loops for drawing piece images like wking, bking, etc. here]
+
+
+        // 4. Render all standard piece graphical resource assets row by row
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
                 Piece p = Board[i][j].getPiece();
                 int x;
 
@@ -509,413 +860,99 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                     switch (x) {
                         case 0:
-                            if (p.isWhite()) {
-                                DisplayBoard[i][j].setBackgroundResource(R.drawable.wking);
-                            } else {
-                                DisplayBoard[i][j].setBackgroundResource(R.drawable.bking);
-                            }
+                            DisplayBoard[i][j].setBackgroundResource(p.isWhite() ? R.drawable.wking : R.drawable.bking);
                             break;
-
                         case 1:
-                            if (p.isWhite()) {
-                                DisplayBoard[i][j].setBackgroundResource(R.drawable.wqueen);
-                            } else {
-                                DisplayBoard[i][j].setBackgroundResource(R.drawable.bqueen);
-                            }
+                            DisplayBoard[i][j].setBackgroundResource(p.isWhite() ? R.drawable.wqueen : R.drawable.bqueen);
                             break;
-
                         case 2:
-                            if (p.isWhite()) {
-                                DisplayBoard[i][j].setBackgroundResource(R.drawable.wrook);
-                            } else {
-                                DisplayBoard[i][j].setBackgroundResource(R.drawable.brook);
-                            }
+                            DisplayBoard[i][j].setBackgroundResource(p.isWhite() ? R.drawable.wrook : R.drawable.brook);
                             break;
-
                         case 3:
-                            if (p.isWhite()) {
-                                DisplayBoard[i][j].setBackgroundResource(R.drawable.wbishop);
-                            } else {
-                                DisplayBoard[i][j].setBackgroundResource(R.drawable.bbishop);
-                            }
+                            DisplayBoard[i][j].setBackgroundResource(p.isWhite() ? R.drawable.wbishop : R.drawable.bbishop);
                             break;
-
                         case 4:
-                            if (p.isWhite()) {
-                                DisplayBoard[i][j].setBackgroundResource(R.drawable.wknight);
-                            } else {
-                                DisplayBoard[i][j].setBackgroundResource(R.drawable.bknight);
-                            }
+                            DisplayBoard[i][j].setBackgroundResource(p.isWhite() ? R.drawable.wknight : R.drawable.bknight);
                             break;
-
                         case 5:
-                            if (p.isWhite()) {
-                                DisplayBoard[i][j].setBackgroundResource(R.drawable.bpawn);
-                            } else {
-                                DisplayBoard[i][j].setBackgroundResource(R.drawable.bpawn);
-                            }
+                            DisplayBoard[i][j].setBackgroundResource(p.isWhite() ? R.drawable.wpawn : R.drawable.bpawn);
                             break;
-
                         default:
-
+                            break;
                     }
-                }else{
+                } else {
                     DisplayBoard[i][j].setBackgroundResource(0);
                 }
             }
         }
+
         isKingInDanger();
+        verifyEndGameStates();
     }
 
-    @Override
-    public void onClick(View v) {
+    // Helper validation to trace active target indices inside our array stacks
+    private boolean isTileInAllowedMoves(int x, int y) {
+        for (Coordinates coord : listOfCoordinates) {
+            if (coord.getX() == x && coord.getY() == y) return true;
+        }
+        return false;
+    }
 
-        int id = v.getId();
 
-        if (id == R.id.R00) {
-            clickedPosition = new Coordinates(0, 0);
-        } else if (id == R.id.R10) {
-            clickedPosition.setX(1);
-            clickedPosition.setY(0);
-        } else if (id == R.id.R20) {
-            clickedPosition.setX(2);
-            clickedPosition.setY(0);
-        } else if (id == R.id.R30) {
-            clickedPosition.setX(3);
-            clickedPosition.setY(0);
-        } else if (id == R.id.R40) {
-            clickedPosition.setX(4);
-            clickedPosition.setY(0);
-        } else if (id == R.id.R50) {
-            clickedPosition.setX(5);
-            clickedPosition.setY(0);
-        } else if (id == R.id.R60) {
-            clickedPosition.setX(6);
-            clickedPosition.setY(0);
-        } else if (id == R.id.R70) {
-            clickedPosition.setX(7);
-            clickedPosition.setY(0);
-        } else if (id == R.id.R01) {
-            clickedPosition.setX(0);
-            clickedPosition.setY(1);
-        } else if (id == R.id.R11) {
-            clickedPosition.setX(1);
-            clickedPosition.setY(1);
-        } else if (id == R.id.R21) {
-            clickedPosition.setX(2);
-            clickedPosition.setY(1);
-        } else if (id == R.id.R31) {
-            clickedPosition.setX(3);
-            clickedPosition.setY(1);
-        } else if (id == R.id.R41) {
-            clickedPosition.setX(4);
-            clickedPosition.setY(1);
-        } else if (id == R.id.R51) {
-            clickedPosition.setX(5);
-            clickedPosition.setY(1);
-        } else if (id == R.id.R61) {
-            clickedPosition.setX(6);
-            clickedPosition.setY(1);
-        } else if (id == R.id.R71) {
-            clickedPosition.setX(7);
-            clickedPosition.setY(1);
-        } else if (id == R.id.R02) {
-            clickedPosition.setX(0);
-            clickedPosition.setY(2);
-        } else if (id == R.id.R12) {
-            clickedPosition.setX(1);
-            clickedPosition.setY(2);
-        } else if (id == R.id.R22) {
-            clickedPosition.setX(2);
-            clickedPosition.setY(2);
-        } else if (id == R.id.R32) {
-            clickedPosition.setX(3);
-            clickedPosition.setY(2);
-        } else if (id == R.id.R42) {
-            clickedPosition.setX(4);
-            clickedPosition.setY(2);
-        } else if (id == R.id.R52) {
-            clickedPosition.setX(5);
-            clickedPosition.setY(2);
-        } else if (id == R.id.R62) {
-            clickedPosition.setX(6);
-            clickedPosition.setY(2);
-        } else if (id == R.id.R72) {
-            clickedPosition.setX(7);
-            clickedPosition.setY(2);
-        } else if (id == R.id.R03) {
-            clickedPosition.setX(0);
-            clickedPosition.setY(3);
-        } else if (id == R.id.R13) {
-            clickedPosition.setX(1);
-            clickedPosition.setY(3);
-        } else if (id == R.id.R23) {
-            clickedPosition.setX(2);
-            clickedPosition.setY(3);
-        } else if (id == R.id.R33) {
-            clickedPosition.setX(3);
-            clickedPosition.setY(3);
-        } else if (id == R.id.R43) {
-            clickedPosition.setX(4);
-            clickedPosition.setY(3);
-        } else if (id == R.id.R53) {
-            clickedPosition.setX(5);
-            clickedPosition.setY(3);
-        } else if (id == R.id.R63) {
-            clickedPosition.setX(6);
-            clickedPosition.setY(3);
-        } else if (id == R.id.R73) {
-            clickedPosition.setX(7);
-            clickedPosition.setY(3);
-        } else if (id == R.id.R04) {
-            clickedPosition.setX(0);
-            clickedPosition.setY(4);
-        } else if (id == R.id.R14) {
-            clickedPosition.setX(1);
-            clickedPosition.setY(4);
-        } else if (id == R.id.R24) {
-            clickedPosition.setX(2);
-            clickedPosition.setY(4);
-        } else if (id == R.id.R34) {
-            clickedPosition.setX(3);
-            clickedPosition.setY(4);
-        } else if (id == R.id.R44) {
-            clickedPosition.setX(4);
-            clickedPosition.setY(4);
-        } else if (id == R.id.R54) {
-            clickedPosition.setX(5);
-            clickedPosition.setY(4);
-        } else if (id == R.id.R64) {
-            clickedPosition.setX(6);
-            clickedPosition.setY(4);
-        } else if (id == R.id.R74) {
-            clickedPosition.setX(7);
-            clickedPosition.setY(4);
-        } else if (id == R.id.R05) {
-            clickedPosition.setX(0);
-            clickedPosition.setY(5);
-        } else if (id == R.id.R15) {
-            clickedPosition.setX(1);
-            clickedPosition.setY(5);
-        } else if (id == R.id.R25) {
-            clickedPosition.setX(2);
-            clickedPosition.setY(5);
-        } else if (id == R.id.R35) {
-            clickedPosition.setX(3);
-            clickedPosition.setY(5);
-        } else if (id == R.id.R45) {
-            clickedPosition.setX(4);
-            clickedPosition.setY(5);
-        } else if (id == R.id.R55) {
-            clickedPosition.setX(5);
-            clickedPosition.setY(5);
-        } else if (id == R.id.R65) {
-            clickedPosition.setX(6);
-            clickedPosition.setY(5);
-        } else if (id == R.id.R75) {
-            clickedPosition.setX(7);
-            clickedPosition.setY(5);
-        } else if (id == R.id.R06) {
-            clickedPosition.setX(0);
-            clickedPosition.setY(6);
-        } else if (id == R.id.R16) {
-            clickedPosition.setX(1);
-            clickedPosition.setY(6);
-        } else if (id == R.id.R26) {
-            clickedPosition.setX(2);
-            clickedPosition.setY(6);
-        } else if (id == R.id.R36) {
-            clickedPosition.setX(3);
-            clickedPosition.setY(6);
-        } else if (id == R.id.R46) {
-            clickedPosition.setX(4);
-            clickedPosition.setY(6);
-        } else if (id == R.id.R56) {
-            clickedPosition.setX(5);
-            clickedPosition.setY(6);
-        } else if (id == R.id.R66) {
-            clickedPosition.setX(6);
-            clickedPosition.setY(6);
-        } else if (id == R.id.R76) {
-            clickedPosition.setX(7);
-            clickedPosition.setY(6);
-        } else if (id == R.id.R07) {
-            clickedPosition.setX(0);
-            clickedPosition.setY(7);
-        } else if (id == R.id.R17) {
-            clickedPosition.setX(1);
-            clickedPosition.setY(7);
-        } else if (id == R.id.R27) {
-            clickedPosition.setX(2);
-            clickedPosition.setY(7);
-        } else if (id == R.id.R37) {
-            clickedPosition.setX(3);
-            clickedPosition.setY(7);
-        } else if (id == R.id.R47) {
-            clickedPosition.setX(4);
-            clickedPosition.setY(7);
-        } else if (id == R.id.R57) {
-            clickedPosition.setX(5);
-            clickedPosition.setY(7);
-        } else if (id == R.id.R67) {
-            clickedPosition.setX(6);
-            clickedPosition.setY(7);
-        } else if (id == R.id.R77) {
-            clickedPosition.setX(7);
-            clickedPosition.setY(7);
+
+    public void undo(View v) {
+        // If the computer engine is currently processing a search request, ignore undo clicks
+        if (isAiThinking) {
+            return;
         }
 
+        // Clear the smart move highlights so they don't persist on the rewound board state
+        aiLastFromSquare = null;
+        aiLastToSquare = null;
 
-        if (!AnythingSelected) {
-            if(Board[clickedPosition.getX()][clickedPosition.getY()].getPiece() == null) {
-                isKingInDanger();
-                return;
-            }else{
-                if(Board[clickedPosition.getX()][clickedPosition.getY()].getPiece().isWhite() != FirstPlayerTurn){
-                    isKingInDanger();
-                    return;
-                }else{
-                    listOfCoordinates.clear();
-                    listOfCoordinates = Board[clickedPosition.getX()][clickedPosition.getY()].getPiece().AllowedMoves(clickedPosition, Board);
-                    DisplayBoardBackground[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.color.colorSelected);
-                    setColorAtAllowedPosition(listOfCoordinates);
-                    AnythingSelected = true;
-                }
-            }
-        } else {
-            if(Board[clickedPosition.getX()][clickedPosition.getY()].getPiece() == null){
-                if(moveIsAllowed(listOfCoordinates , clickedPosition)){
+        // Single Player mode requires popping two states to undo a full round of turns
+        int statesToRemove = (!FirstPlayerTurn) ? 1 : 2;
 
-                    saveBoard();
-                    if(Board[clickedPosition.getX()][clickedPosition.getY()].getPiece() instanceof King){
-                        if(Board[clickedPosition.getX()][clickedPosition.getY()].getPiece().isWhite() != FirstPlayerTurn){
-                            game_over.setVisibility(View.VISIBLE);
-                        }
-                    }
-                    Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(Board[lastPos.getX()][lastPos.getY()].getPiece());
-                    Board[lastPos.getX()][lastPos.getY()].setPiece(null);
-
-                    isKingInDanger();
-                    resetColorAtAllowedPosition(listOfCoordinates);
-                    DisplayBoard[lastPos.getX()][lastPos.getY()].setBackgroundResource(0);
-                    resetColorAtLastPosition(lastPos);
-                    AnythingSelected = false;
-                    FirstPlayerTurn = !FirstPlayerTurn;
-                    checkForPawn();
-
-                }else{
-                    resetColorAtLastPosition(lastPos);
-                    resetColorAtAllowedPosition(listOfCoordinates);
-                    AnythingSelected = false;
-                }
-
-            }else{
-                if(Board[clickedPosition.getX()][clickedPosition.getY()].getPiece() == null) {
-                    isKingInDanger();
-                    return;
-
-                }else{
-                    if(Board[clickedPosition.getX()][clickedPosition.getY()].getPiece() !=null){
-                        if(Board[clickedPosition.getX()][clickedPosition.getY()].getPiece().isWhite() != FirstPlayerTurn){
-                            if(moveIsAllowed(listOfCoordinates , clickedPosition)){
-
-                                saveBoard();
-                                if(Board[clickedPosition.getX()][clickedPosition.getY()].getPiece() instanceof King){
-                                    if(Board[clickedPosition.getX()][clickedPosition.getY()].getPiece().isWhite() != FirstPlayerTurn){
-                                        game_over.setVisibility(View.VISIBLE);
-                                    }
-                                }
-                                Board[clickedPosition.getX()][clickedPosition.getY()].setPiece(Board[lastPos.getX()][lastPos.getY()].getPiece());
-                                Board[lastPos.getX()][lastPos.getY()].setPiece(null);
-
-                                resetColorAtAllowedPosition(listOfCoordinates);
-                                DisplayBoard[lastPos.getX()][lastPos.getY()].setBackgroundResource(0);
-                                resetColorAtLastPosition(lastPos);
-
-                                AnythingSelected = false;
-                                FirstPlayerTurn = !FirstPlayerTurn;
-                                checkForPawn();
-                            }else{
-                                resetColorAtLastPosition(lastPos);
-                                resetColorAtAllowedPosition(listOfCoordinates);
-                                AnythingSelected = false;
-                            }
-
-                        }else{
-                            if(Board[clickedPosition.getX()][clickedPosition.getY()].getPiece().isWhite() != FirstPlayerTurn){
-                                isKingInDanger();
-                                return;
-                            }
-
-                            resetColorAtLastPosition(lastPos);
-                            resetColorAtAllowedPosition(listOfCoordinates);
-
-                            listOfCoordinates.clear();
-                            listOfCoordinates = Board[clickedPosition.getX()][clickedPosition.getY()].getPiece().AllowedMoves(clickedPosition, Board);
-                            DisplayBoardBackground[clickedPosition.getX()][clickedPosition.getY()].setBackgroundResource(R.color.colorSelected);
-                            setColorAtAllowedPosition(listOfCoordinates);
-                            AnythingSelected = true;
+        for (int step = 0; step < statesToRemove; step++) {
+            if (numberOfMoves > 0) {
+                for (int g = 0; g < 8; g++) {
+                    for (int h = 0; h < 8; h++) {
+                        Position[][] pastBoardState = LastMoves.get(numberOfMoves - 1);
+                        if (pastBoardState[g][h].getPiece() == null) {
+                            Board[g][h].setPiece(null);
+                        } else {
+                            Board[g][h].setPiece(pastBoardState[g][h].getPiece());
                         }
                     }
                 }
+                // Remove the reference snapshot from history tracking array list
+                LastMoves.remove(numberOfMoves - 1);
+                numberOfMoves--;
             }
         }
 
-        isKingInDanger();
-        lastPos = new Coordinates(clickedPosition.getX(), clickedPosition.getY());
+        // Force redraw layout graphics assets updates mapping pieces positions
         setBoard();
-    }
 
-    public void saveBoard(){
-        numberOfMoves++;
-        LastMoves.add(numberOfMoves-1 ,Board2 );
-
+        // Clear and restore original board square accent design styling background maps
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
-                LastMoves.get(numberOfMoves-1)[i][j] = new Position(null);
-            }
-        }
-
-        for(int g=0;g<8;g++){
-            for(int h=0;h<8;h++){
-                if(Board[g][h].getPiece()==null){
-                    LastMoves.get(numberOfMoves-1)[g][h].setPiece(null);
-                }else{
-                    LastMoves.get(numberOfMoves-1)[g][h].setPiece(Board[g][h].getPiece());
+                if ((i + j) % 2 == 0) {
+                    DisplayBoardBackground[i][j].setBackgroundResource(R.color.colorBoardDark);
+                } else {
+                    DisplayBoardBackground[i][j].setBackgroundResource(R.color.colorBoardLight);
                 }
             }
         }
+
+        isKingInDanger();
+        AnythingSelected = false;
+        FirstPlayerTurn = true; // Ensure control focus initializes on the human user
+        game_over.setVisibility(View.INVISIBLE);
+        game_over.setText("Game Over !!"); // Reset layout strings back to default
+        isAiThinking = false; // Unlock click capabilities safely
     }
 
-    public void undo(View v){
-        if(numberOfMoves>0) {
-
-            for(int g=0;g<8;g++){
-                for(int h=0;h<8;h++){
-                    if(LastMoves.get(numberOfMoves-1)[g][h].getPiece()==null){
-                        Board[g][h].setPiece(null);
-                    }else{
-                        Board[g][h].setPiece(LastMoves.get(numberOfMoves-1)[g][h].getPiece());
-                    }
-                }
-            }
-            numberOfMoves--;
-
-            setBoard();
-            for(int i=0;i<8;i++){
-                for(int j=0;j<8;j++){
-                    if((i+j)%2==0){
-                        DisplayBoardBackground[i][j].setBackgroundResource(R.color.colorBoardDark);
-                    }else{
-                        DisplayBoardBackground[i][j].setBackgroundResource(R.color.colorBoardLight);
-                    }
-                }
-            }
-            isKingInDanger();
-            FirstPlayerTurn = !FirstPlayerTurn;
-            game_over.setVisibility(View.INVISIBLE);
-        }
-    }
 
     public void pawnChoice(View v){
         int x = v.getId();
@@ -967,13 +1004,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    void setColorAtAllowedPosition(ArrayList<Coordinates> list){
+    void setColorAtAllowedPosition(ArrayList<Coordinates> list) {
+        // Identify the color of the player currently making a move
+        boolean isWhiteTurn = Board[lastPos.getX()][lastPos.getY()].getPiece().isWhite();
 
-        for(int i=0; i<list.size(); i++){
-            if(Board[list.get(i).getX()][list.get(i).getY()].getPiece() == null){
-                DisplayBoardBackground[list.get(i).getX()][list.get(i).getY()].setBackgroundResource(R.color.colorPositionAvailable);
-            }else{
-                DisplayBoardBackground[list.get(i).getX()][list.get(i).getY()].setBackgroundResource(R.color.colorDanger);
+        for (int i = 0; i < list.size(); i++) {
+            Coordinates targetTile = list.get(i);
+
+            // 🌟 STRICT RULE ENFORCEMENT: Filter out moves that leave your own King in check
+            if (!isMoveSafeFromCheck(lastPos, targetTile, isWhiteTurn)) {
+                continue; // Skip highlighting this move because it's illegal!
+            }
+
+            // Highlight legal empty squares vs legal enemy capture targets
+            if (Board[targetTile.getX()][targetTile.getY()].getPiece() == null) {
+                DisplayBoardBackground[targetTile.getX()][targetTile.getY()]
+                        .setBackgroundResource(R.color.colorPositionAvailable);
+            } else {
+                DisplayBoardBackground[targetTile.getX()][targetTile.getY()]
+                        .setBackgroundResource(R.color.colorDanger);
             }
         }
     }
@@ -997,34 +1046,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private void isKingInDanger(){
-        ArrayList<Coordinates> List = new ArrayList<>();
+    private void isKingInDanger() {
+        boolean whiteKingInCheck = isKingCurrentlyInCheck(true);
+        boolean blackKingInCheck = isKingCurrentlyInCheck(false);
 
-        for(int i=0;i<8;i++){
-            for(int j=0;j<8;j++){
-                if(Board[i][j].getPiece() != null){
-                    List.clear();
-                    Coordinates c = new Coordinates(i,j);
-                    List = Board[i][j].getPiece().AllowedMoves(c,Board);
+        if (whiteKingInCheck) {
+            Coordinates wKingPos = findKingPosition(true);
+            if (wKingPos != null) {
+                DisplayBoardBackground[wKingPos.getX()][wKingPos.getY()]
+                        .setBackgroundResource(R.color.colorKingInDanger); // Paints White King Red
+            }
+        }
 
-                    for (int x=0;x<List.size();x++){
-                        if(Board[List.get(x).getX()][List.get(x).getY()].getPiece() instanceof King){
-
-                            if((List.get(x).getX()+List.get(x).getY())%2==0){
-                                DisplayBoardBackground[List.get(x).getX()][List.get(x).getY()].setBackgroundResource(R.color.colorBoardDark);
-                            }else{
-                                DisplayBoardBackground[List.get(x).getX()][List.get(x).getY()].setBackgroundResource(R.color.colorBoardLight);
-                            }
-
-                            if(Board[i][j].getPiece().isWhite() != Board[List.get(x).getX()][List.get(x).getY()].getPiece().isWhite()){
-                                DisplayBoardBackground[List.get(x).getX()][List.get(x).getY()].setBackgroundResource(R.color.colorKingInDanger);
-                            }
-                        }
-                    }
-                }
+        if (blackKingInCheck) {
+            Coordinates bKingPos = findKingPosition(false);
+            if (bKingPos != null) {
+                DisplayBoardBackground[bKingPos.getX()][bKingPos.getY()]
+                        .setBackgroundResource(R.color.colorKingInDanger); // Paints Black King Red
             }
         }
     }
+
 
     private void checkForPawn(){
         if(Board[clickedPosition.getX()][clickedPosition.getY()].getPiece() instanceof Pawn){
@@ -1040,5 +1082,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
         isKingInDanger();
+    }
+
+    public void saveBoard(){
+        numberOfMoves++;
+        LastMoves.add(numberOfMoves-1 ,Board2 );
+
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                LastMoves.get(numberOfMoves-1)[i][j] = new Position(null);
+            }
+        }
+
+        for(int g=0;g<8;g++){
+            for(int h=0;h<8;h++){
+                if(Board[g][h].getPiece()==null){
+                    LastMoves.get(numberOfMoves-1)[g][h].setPiece(null);
+                }else{
+                    LastMoves.get(numberOfMoves-1)[g][h].setPiece(Board[g][h].getPiece());
+                }
+            }
+        }
     }
 }

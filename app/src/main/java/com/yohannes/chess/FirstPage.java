@@ -9,6 +9,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 
 public class FirstPage extends AppCompatActivity {
@@ -46,14 +47,41 @@ public class FirstPage extends AppCompatActivity {
             }
         });
 
-        Button StartSinglePlayerGame = (Button) findViewById(R.id.singlePlayerButton);
+        /*Button StartSinglePlayerGame = (Button) findViewById(R.id.singlePlayerButton);
 
         StartSinglePlayerGame.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent i = new Intent(FirstPage.this , SinglePlayerMode.class);
+                Intent i = new Intent(FirstPage.this , SinglePlayerModewithBotActivity.class);
                 FirstPage.this.startActivity(i);
             }
+        });*/
+        // Inside your FirstPage class click listener configuration logic
+        TextView singlePlayerButton = findViewById(R.id.singlePlayerButton);
+        singlePlayerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+               final String[] levels = {
+                        "🛡️ Casual Woodcutter (Easy)",
+                        "⚔️ Master Tactician (Medium)",
+                        "👑 Grandmaster Core (Hard)"
+                };
+                android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(FirstPage.this);
+                builder.setTitle("Select Bot Difficulty Level");
+                builder.setItems(levels, new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        // Transfer level token parameters down to game activities via Intents
+                        Intent intent = new Intent(FirstPage.this, SinglePlayerModewithBotActivity.class);
+                        intent.putExtra("SELECTED_BOT_LEVEL", which); // 0 = Beginner, 1 = Inter, 2 = Prod
+                        startActivity(intent);
+                    }
+                });
+                builder.show();
+            }
         });
+
     }
+
+
 }
